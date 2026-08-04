@@ -4,7 +4,8 @@
   "version": "0.1.0",
   "description": "Browser tab caching optimization demos — Puppeteer-based hibernation & restore benchmarks",
   "scripts": {
-    "bench": "node snap-restore/bench.js"
+    "bench": "node snap-restore/bench.js",
+    "bench:memory": "node memory-delta/bench.js"
   },
   "engines": {
     "node": ">=18"

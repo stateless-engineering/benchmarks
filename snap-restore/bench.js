@@ -20,101 +20,7 @@
  */
 'use strict';
 
-const http = require('http');
-const fs = require('fs');
-const path = require('path');
-const puppeteer = require('puppeteer');
-
-const FIXTURE = fs.readFileSync(path.join(__dirname, 'fixture.html'), 'utf8');
-
-// ---------------------------------------------------------------- tiny server
-// Serving over HTTP gives a full reload a real (if local) network cost.
-const server = http.createServer((req, res) => {
-  if (req.url === '/fixture') {
-    res.writeHead(200, { 'Content-Type': 'text/html' });
-    res.end(FIXTURE);
-  } else {
-    res.writeHead(404);
-    res.end();
-  }
-});
-const listen = () =>
-  new Promise((r) => server.listen(0, '127.0.0.1', () => r(server.address().port)));
-const shutdown = () => new Promise((r) => server.close(r));
-
-const mb = (n) => (n / 1048576).toFixed(2) + ' MB';
-
-// ---------------------------------------------------------------- snapshot
-// Capture the "render state" of a live tab. This is the analog of what a
-// freeze-dried tab / bfcache-style serialization would persist: the rendered
-// DOM (scripts stripped — we replay state, we don't re-execute), scroll
-// position, form values, and shallow JS runtime state.
-async function snapshot(page) {
-  return page.evaluate(() => {
-    const html = document.documentElement.outerHTML.replace(
-      /<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi,
-      ''
-    );
-
-    const forms = [...document.querySelectorAll('input, textarea, select')].map((el) => ({
-      selector: uniqueSelector(el),
-      tag: el.tagName,
-      type: el.type || '',
-      value: el.value,
-      checked: el.checked,
-      selectedIndex: el.selectedIndex,
-    }));
-
-    function uniqueSelector(el) {
-      if (el.id) return '#' + CSS.escape(el.id);
-      const parts = [];
-      let node = el;
-      while (node && node.nodeType === 1 && parts.length < 4) {
-        let part = node.tagName.toLowerCase();
-        if (node.id) {
-          part = '#' + CSS.escape(node.id);
-          parts.unshift(part);
-          break;
-        }
-        const siblings = [...node.parentNode.children].filter(
-          (s) => s.tagName === node.tagName
-        );
-        if (siblings.length > 1) part += ':nth-of-type(' + (siblings.indexOf(node) + 1) + ')';
-        parts.unshift(part);
-        node = node.parentNode;
-      }
-      return parts.join(' > ');
-    }
-
-    return {
-      html,
-      forms,
-      scrollX: window.scrollX,
-      scrollY: window.scrollY,
-      demoState: window.__demoState,
-      nodeCount: document.querySelectorAll('*').length,
-      bytes: html.length,
-    };
-  });
-}
-
-// ---------------------------------------------------------------- restore
-// New tab, replay the snapshot. No network, no script re-execution — the DOM
-// comes straight from the snapshot and state is re-applied on top.
-async function restore(page, snap) {
-  await page.setContent(snap.html, { waitUntil: 'load' });
-  await page.evaluate((s) => {
-    window.scrollTo(s.scrollX, s.scrollY);
-    for (const f of s.forms) {
-      const el = document.querySelector(f.selector);
-      if (!el) continue;
-      if (f.tag === 'SELECT') el.selectedIndex = f.selectedIndex;
-      else if (f.type === 'checkbox' || f.type === 'radio') el.checked = f.checked;
-      else el.value = f.value;
-    }
-    window.__demoState = s.demoState;
-  }, snap);
-}
+const { launch, serveFixture, heap, snapshot, restore } = require('../lib/common');
 
 // ---------------------------------------------------------------- full reload
 async function fullReload(browser, url) {
@@ -147,28 +53,9 @@ async function interact(page) {
   });
 }
 
-const heap = async (page) => (await page.metrics()).JSHeapUsedSize;
-
-// Prefer a system Chromium (no download needed, matches a real user's browser);
-// fall back to Puppeteer's bundled Chrome, then chrome-headless-shell.
-const CHROME_PATHS = ['/usr/bin/chromium', '/usr/bin/google-chrome', '/usr/bin/chromium-browser'];
-const findSystemChrome = () => CHROME_PATHS.find((p) => fs.existsSync(p));
-
-async function launch() {
-  const exe = findSystemChrome();
-  if (exe) return puppeteer.launch({ headless: true, executablePath: exe });
-  try {
-    return await puppeteer.launch({ headless: true });
-  } catch (err) {
-    console.warn('bundled chrome unavailable, falling back to chrome-headless-shell:', err.message.split('\n')[0]);
-    return puppeteer.launch({ headless: 'shell' });
-  }
-}
-
 // ---------------------------------------------------------------- main
 async function main() {
-  const port = await listen();
-  const url = `http://127.0.0.1:${port}/fixture`;
+  const { url, close } = await serveFixture();
 
   const browser = await launch();
   try {
@@ -200,17 +87,12 @@ async function main() {
     await b.close();
 
     // --- report ---
-    const stateOK =
-      JSON.stringify(a.state.demoState) !== JSON.stringify(restored.demoState);
+    const mb = (n) => (n / 1048576).toFixed(2) + ' MB';
     console.log('snapshot size      :', (snap.bytes / 1024).toFixed(1) + ' KiB',
       `(${snap.nodeCount} DOM nodes preserved)`);
     console.log('');
-    console.log(
-      'metric             | full reload        | snapshot restore   '
-    );
-    console.log(
-      '--------------------+--------------------+--------------------'
-    );
+    console.log('metric             | full reload        | snapshot restore   ');
+    console.log('--------------------+--------------------+--------------------');
     const row = (label, v1, v2) =>
       console.log(label.padEnd(20) + '| ' + String(v1).padEnd(18) + '| ' + String(v2).padEnd(18));
     row('tab back in', (a.ms / 1000).toFixed(2) + 's', (restoreMs / 1000).toFixed(2) + 's');
@@ -220,6 +102,8 @@ async function main() {
     row('JS runtime state', JSON.stringify(a.state.demoState), JSON.stringify(restored.demoState));
     console.log('');
 
+    const stateOK =
+      JSON.stringify(a.state.demoState) !== JSON.stringify(restored.demoState);
     const speedup = (a.ms / restoreMs).toFixed(1) + 'x faster';
     console.log(
       `verdict: full reload ${stateOK ? 'LOST' : 'kept'} the JS state; ` +
@@ -235,7 +119,7 @@ async function main() {
     );
   } finally {
     await browser.close();
-    await shutdown();
+    await close();
   }
 }
 

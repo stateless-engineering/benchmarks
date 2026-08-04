@@ -16,7 +16,7 @@ to allow instant restore without a full reload. This repo demonstrates the gap:
 | Demo | What it shows | Status |
 |------|--------------|--------|
 | `snap-restore/` | Full reload vs snapshot restore: time, JS heap, scroll/form/JS-state preservation | implemented |
-| `memory-delta/` | Pre/post memory metrics across the spectrum (live → frozen → discarded) | planned |
+| `memory-delta/` | Tab lifecycle memory spectrum: live → frozen → discarded → restored, with process-tree RSS | implemented |
 | `heavy-spa/` | Realistic heavy SPA benchmark (dashboard, data grid) | planned |
 
 ## Quick start
@@ -43,6 +43,31 @@ JS runtime state    | {"visits":1,"token":"fresh",...}| {"visits":99,"token":"mu
 
 verdict: full reload LOST the JS state; restore kept it and was 1.9x faster
 ```
+
+### `memory-delta` — the lifecycle spectrum
+
+```bash
+npm run bench:memory
+```
+
+```
+stage         | browser tree RSS | tab JS heap | CPU (timers)
+--------------+------------------+-------------+---------------
+browser floor |          572 MB |           — | —
+live          |         1135 MB |      1.7 MB | running (+5 ticks/0.5s)
+frozen        |         1127 MB |      1.7 MB | stopped (+0 in 1.2s)
+discarded     |          593 MB |           — | — (renderer killed)
+restored      |          951 MB |      3.0 MB | — (snapshot replay)
+```
+
+Freezing holds 99% of the memory but stops the timers; discarding frees
+~540 MB but loses the state; restoring brings the state back (60k DOM
+nodes, no network, no script re-execution) for a fraction of the cost.
+RSS = whole browser process tree via `/proc`; VmRSS over-counts shared
+pages, so the absolute numbers run high — the deltas are the story.
+
+`snap-restore` and `memory-delta` share helpers in `lib/common.js`
+(system-Chromium launch, fixture server, tree-RSS, snapshot/restore).
 
 ## Organization
 
