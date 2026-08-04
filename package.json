@@ -6,6 +6,13 @@
   "scripts": {
     "bench": "node snap-restore/bench.js",
     "bench:memory": "node memory-delta/bench.js",
+    "bench:bfcache": "node bfcache/bench.js",
+    "bench:cpu": "node cpu-burn/bench.js",
+    "bench:restart": "node restart/bench.js",
+    "bench:survival": "node survival-matrix/bench.js",
+    "bench:network": "node network-skip/bench.js",
+    "bench:tabs": "node tab-spray/bench.js",
+    "bench:pixel": "node pixel-ghost/bench.js",
     "bench:all": "node bench-runner/run.js ."
   },
   "engines": {
