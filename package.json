@@ -1,8 +1,8 @@
 {
-  "name": "@stateless-engineering/demos",
+  "name": "@stateless-engineering/benchmarks",
   "private": true,
   "version": "0.1.0",
-  "description": "Browser tab caching optimization demos — Puppeteer-based hibernation & restore benchmarks",
+  "description": "Central benchmark store for stateless-engineering: browser tab-caching benchmarks for the org's build repos",
   "scripts": {
     "bench": "node snap-restore/bench.js",
     "bench:memory": "node memory-delta/bench.js",
