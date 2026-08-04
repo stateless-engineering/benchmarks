@@ -1,0 +1,3 @@
+[submodule "bench-runner"]
+	path = bench-runner
+	url = https://github.com/stateless-engineering/bench-runner.git

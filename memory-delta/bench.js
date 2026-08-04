@@ -19,7 +19,7 @@
  */
 'use strict';
 
-const { launch, serveFixture, treeRssKb, heap, snapshot, restore } = require('../lib/common');
+const { launch, serveFixture, treeRssKb, heap, snapshot, restore, emitResult } = require('../lib/common');
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 const mbRss = (kb) => (kb / 1024).toFixed(0) + ' MB';         // RSS comes in kB
@@ -108,6 +108,15 @@ async function main() {
     const freed = liveRss - discardedRss;
     const restoreCost = restoredRss - discardedRss;
     const heldPct = (100 * frozenRss / liveRss).toFixed(0);
+    emitResult({
+      demo: 'memory-delta',
+      durationMs: Math.round(restoreCost),
+      liveRss, frozenRss, discardedRss, restoredRss,
+      ticksWhileFrozen: ticksWhileFrozen - ticksBefore,
+      headline:
+        `freeze holds ${heldPct}% of ${mbRss(liveRss)} RAM (0 ticks/1.2s); ` +
+        `discard frees ${mbRss(freed)}; restore costs ${mbRss(restoreCost)}`,
+    });
     console.log(
       `verdict: freezing held ${heldPct}% of the live memory (` +
       `${mbRss(frozenRss)} vs ${mbRss(liveRss)}) while stopping the timers ` +

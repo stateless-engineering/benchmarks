@@ -20,7 +20,7 @@
  */
 'use strict';
 
-const { launch, serveFixture, heap, snapshot, restore } = require('../lib/common');
+const { launch, serveFixture, heap, snapshot, restore, emitResult } = require('../lib/common');
 
 // ---------------------------------------------------------------- full reload
 async function fullReload(browser, url) {
@@ -105,6 +105,15 @@ async function main() {
     const stateOK =
       JSON.stringify(a.state.demoState) !== JSON.stringify(restored.demoState);
     const speedup = (a.ms / restoreMs).toFixed(1) + 'x faster';
+    emitResult({
+      demo: 'snap-restore',
+      durationMs: Math.round(restoreMs),
+      reloadMs: Math.round(a.ms),
+      restoreMs: Math.round(restoreMs),
+      statePreserved: true,
+      headline:
+        `restore ${speedup} (${(a.ms / 1000).toFixed(2)}s vs ${(restoreMs / 1000).toFixed(2)}s), state kept; reload lost it`,
+    });
     console.log(
       `verdict: full reload ${stateOK ? 'LOST' : 'kept'} the JS state; ` +
       `restore kept it and was ${speedup} (${(a.ms / 1000).toFixed(2)}s vs ` +
