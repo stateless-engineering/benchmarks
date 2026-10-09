@@ -86,15 +86,15 @@ O(n²) vs O(n log n): **16× slower** at n=5000.
 
 ## Gate Progress (tighter gate)
 - **Original gate**: >3 findings → **PASS** (6 findings)
-- **Tighter gate** → **5/8 met**
+- **Tighter gate** → **7/8 met** (gap closures in this branch)
   - ✓ Baseline pairs (matrix regular-vs-typed, workers-vs-simulated, bfcache-vs-reload)
   - ✓ Distributions infrastructure (trace.js stats: min/max/mean/stddev)
   - ✓ Environment block (below)
   - ✓ Per-finding verification (every number re-run this sweep)
   - ✓ Correctness checks (sorting `correct: true`, checksums, state-kept assertions)
-  - ❌ GC pause duration for memory benchmarks (memory-intensive lacks GC event logging — the gcStats stub was added but never wired)
-  - ❌ Warm-up protocol (first iterations not discarded in float-intensive)
-  - ❌ Randomized input per run (seeded only)
+  - ✓ **GC pause duration** — wired via PerformanceObserver('gc') + JS-heap churn phase: 365 GCs, 1100ms total pause, 120.7ms max in one run
+  - ✓ **Warm-up protocol** — float-intensive runs 1% (50K) iterations untimed first: throughput 31056 → 36232 ops/ms (+17%)
+  - ✓ **Randomized input per run** — sorting-complexities + graph-traversal use seeded mulberry32 PRNG (`--seed=N` reproducible, clock-seeded distinct; seed ships in RESULT_JSON; same-seed runs give identical swap counts)
   - ❌ `high-compute-use/io-stream.js` claimed in a prior report but **does not exist on disk** — the 1MB JSONL streaming finding is retracted until the file lands
 
 ## Environment (this sweep)

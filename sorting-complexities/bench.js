@@ -13,8 +13,23 @@
 
 const { emitResult } = require('../lib/common');
 
+// Per-run randomized input (tighter-gate gap 3): PRNG is seeded from
+// argv or the clock so each run is reproducible AND distinct — seed
+// is printed with the result. Pass `--seed N` to reproduce a run.
+const seedArg = process.argv.find((a) => a.startsWith('--seed='));
+const SEED = seedArg ? Number(seedArg.split('=')[1]) : Date.now() % 2147483647;
+function mulberry32(s) {
+  return function () {
+    s |= 0; s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const rand = mulberry32(SEED);
+
 const DATA_SIZE = 5000;
-const DATA = Array.from({ length: DATA_SIZE }, () => Math.floor(Math.random() * 10000));
+const DATA = Array.from({ length: DATA_SIZE }, () => Math.floor(rand() * 10000));
 
 // Bubble Sort — O(n²)
 function bubbleSort(arr) {
@@ -174,6 +189,7 @@ async function main() {
     demo: 'sorting-complexities',
     durationMs: totalMs,
     dataSize: DATA_SIZE,
+    seed: SEED,
     algorithms: {
       bubble: {
         name: 'bubbleSort',

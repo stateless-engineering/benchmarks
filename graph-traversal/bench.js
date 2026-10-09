@@ -12,6 +12,20 @@
 
 const { emitResult } = require('../lib/common');
 
+// Per-run randomized input (tighter-gate gap 3): seeded PRNG, reproducible
+// via --seed=N, distinct per run otherwise. Seed ships in RESULT_JSON.
+const seedArg = process.argv.find((a) => a.startsWith('--seed='));
+const SEED = seedArg ? Number(seedArg.split('=')[1]) : Date.now() % 2147483647;
+function mulberry32(s) {
+  return function () {
+    s |= 0; s = (s + 0x6D2B79F5) | 0;
+    let t = Math.imul(s ^ (s >>> 15), 1 | s);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const rand = mulberry32(SEED);
+
 const NODES = 1000;
 const EDGES_PER_NODE = 4;
 
@@ -24,8 +38,8 @@ function generateGraph(nodes, edgesPerNode) {
   
   for (let i = 0; i < nodes; i++) {
     for (let j = 0; j < edgesPerNode; j++) {
-      const target = Math.floor(Math.random() * nodes);
-      const weight = Math.floor(Math.random() * 100) + 1;
+      const target = Math.floor(rand() * nodes);
+      const weight = Math.floor(rand() * 100) + 1;
       graph.get(i).push({ to: target, weight });
     }
   }
@@ -181,6 +195,7 @@ async function main() {
     durationMs: totalMs,
     nodes: NODES,
     edgesPerNode: EDGES_PER_NODE,
+    seed: SEED,
     algorithms: {
       bfs: { ms: bfsResult.ms, visited: bfsResult.visited, reachable: bfsResult.reachable },
       dfs: { ms: dfsResult.ms, visited: dfsResult.visited },

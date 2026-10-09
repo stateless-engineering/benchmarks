@@ -9,8 +9,25 @@
  * Complexity: Memory-intensive (allocates ~200MB across phases)
  */
 'use strict';
-const gcStats = { count: 0, totalMs: 0 };
-function onGC(t) { gcStats.count++; gcStats.totalMs += (performance.now()-t); }
+
+// GC pause logging (tighter-gate gap 1): PerformanceObserver on 'gc'
+// entries gives real pause durations without --expose-gc.
+const gcStats = { count: 0, totalMs: 0, pausesMs: [] };
+try {
+  const { PerformanceObserver } = require('perf_hooks');
+  const gcObserver = new PerformanceObserver((list) => {
+    for (const entry of list.getEntries()) {
+      // entry.startTime ≈ when GC began; entry.duration ≈ pause length
+      const pauseMs = Math.round(entry.duration * 1000) / 1000;
+      gcStats.count++;
+      gcStats.totalMs += pauseMs;
+      gcStats.pausesMs.push(pauseMs);
+    }
+  });
+  gcObserver.observe({ entryTypes: ['gc'], buffered: true });
+} catch {
+  // Node without GC entry support: gcStats stays zeroed, fields still emit.
+}
 
 const { emitResult } = require('../lib/common');
 
@@ -133,6 +150,24 @@ async function main() {
     }
   }
   
+
+  // Phase 5: JS-heap churn — the existing phases allocate mostly
+  // off-heap (ArrayBuffer/Buffer), so no major-GC pressure. Churn
+  // plain objects + strings to force collectable garbage the
+  // PerformanceObserver can measure.
+  console.log('Phase 5: JS-heap churn (GC pressure)...');
+  for (let round = 0; round < 20; round++) {
+    const churn = Array.from({ length: 50000 }, (_, i) => ({
+      id: i,
+      name: `churn-${round}-${i}`,
+      payload: Array.from({ length: 20 }, (_, j) => `${round}.${i}.${j}`),
+      nested: { a: { b: { c: i * round } } }
+    }));
+    // touch then drop: every round's array becomes garbage
+    if (churn[0].payload[0] === 'never') console.log('unreachable');
+  }
+  // Let pending GC entries flush through the observer before reading stats.
+  await new Promise((resolve) => setTimeout(resolve, 200));
   const memAfter = process.memoryUsage();
   const durationMs = performance.now() - start;
   
@@ -147,7 +182,12 @@ async function main() {
     poolOpsCompleted: poolOps.filter(p => p.acquired).length,
     poolOpsTotal: poolOps.length,
     smallObjectsCreated: smallObjects.length,
-    headline: `Memory-intensive: ${TOTAL_CHUNKS}MB allocated, ${poolOps.filter(p => p.acquired).length}/${poolOps.length} pool ops, ${smallObjects.length} small objects, heap delta ${Math.round((memAfter.heapUsed - memBefore.heapUsed) / 1024 / 1024)}MB, ${Math.round(durationMs)}ms`
+    gc: {
+      count: gcStats.count,
+      totalPauseMs: Math.round(gcStats.totalMs * 1000) / 1000,
+      maxPauseMs: gcStats.pausesMs.length ? Math.max(...gcStats.pausesMs) : 0,
+    },
+    headline: `Memory-intensive: ${TOTAL_CHUNKS}MB allocated, ${poolOps.filter(p => p.acquired).length}/${poolOps.length} pool ops, ${smallObjects.length} small objects, heap delta ${Math.round((memAfter.heapUsed - memBefore.heapUsed) / 1024 / 1024)}MB, ${gcStats.count} GCs / ${Math.round(gcStats.totalMs)}ms pause, ${Math.round(durationMs)}ms`
   });
 }
 
