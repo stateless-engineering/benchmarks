@@ -1,3 +1,6 @@
+# gv (GraveCrypt) runtime state + gated worktrees — never source
+state/
+.wt-*/
 node_modules/
 *.log
 .DS_Store
