@@ -1,0 +1,80 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 720 360" role="img" aria-label="Benchmark comparison: sorting algorithms and graph algorithms" style="max-width:720px;width:100%;height:auto;background:var(--surface);font-family:system-ui,sans-serif;color:var(--fg)">
+<text x="360" y="24" text-anchor="middle" font-size="15" font-weight="600">Benchmark Statistical Breakdown — Sorting vs Graph vs Memory</text>
+
+<!-- Sorting bar chart -->
+<g transform="translate(20,40)">
+<text x="0" y="0" font-size="11" font-weight="600" fill="var(--fg)">Sorting (ms, 5000 ints)</text>
+<rect x="0" y="14" width="260" height="12" fill="var(--border)"/>
+<!-- Bubble -->
+<rect x="0" y="28" width="196" height="14" fill="#ef4444" rx="2"/>
+<text x="202" y="39" font-size="10">72 ms (O(n²))</text>
+<!-- Quick -->
+<rect x="0" y="46" width="17" height="14" fill="#22c55e" rx="2"/>
+<text x="23" y="57" font-size="10">5-9 ms (O(n log n))</text>
+<!-- Merge -->
+<rect x="0" y="64" width="21" height="14" fill="#3b82f6" rx="2"/>
+<text x="27" y="75" font-size="10">6-8 ms</text>
+<!-- Heap -->
+<rect x="0" y="82" width="17" height="14" fill="#a855f7" rx="2"/>
+<text x="23" y="93" font-size="10">5-7 ms</text>
+<!-- Radix -->
+<rect x="0" y="100" width="10" height="14" fill="#f59e0b" rx="2"/>
+<text x="16" y="111" font-size="10">3 ms (O(n·k))</text>
+</g>
+
+<!-- Graph traversal -->
+<g transform="translate(20,170)">
+<text x="0" y="0" font-size="11" font-weight="600" fill="var(--fg)">Graph traversal (ms, 100 nodes, 4 edges)</text>
+<rect x="0" y="14" width="260" height="12" fill="var(--border)"/>
+<rect x="0" y="28" width="3" height="14" fill="#22c55e" rx="2"/>
+<text x="9" y="39" font-size="10">BFS 1 ms (O(V+E))</text>
+<rect x="0" y="46" width="21" height="14" fill="#3b82f6" rx="2"/>
+<text x="27" y="57" font-size="10">DFS 8 ms</text>
+<rect x="0" y="64" width="21" height="14" fill="#a855f7" rx="2"/>
+<text x="27" y="75" font-size="10">Dijkstra 8 ms</text>
+<rect x="0" y="82" width="260" height="14" fill="#ef4444" rx="2"/>
+<text x="266" y="93" font-size="10">Floyd-Warshall 2993 ms (O(V³))</text>
+</g>
+
+<!-- Memory / restore -->
+<g transform="translate(320,40)">
+<text x="0" y="0" font-size="11" font-weight="600" fill="var(--fg)">Memory / restore (ms / MB)</text>
+<rect x="0" y="14" width="380" height="12" fill="var(--border)"/>
+
+<!-- bfcache -->
+<rect x="0" y="28" width="3" height="14" fill="#22c55e" rx="2"/>
+<text x="9" y="39" font-size="10">bfcache back 21 ms vs reload 2090 ms (99× faster)</text>
+
+<!-- snap-restore -->
+<rect x="0" y="46" width="13" height="14" fill="#3b82f6" rx="2"/>
+<text x="19" y="57" font-size="10">snap-restore 1060 ms vs reload 2020 ms (1.9× faster)</text>
+
+<!-- memory-intense -->
+<rect x="0" y="64" width="200" height="14" fill="#a855f7" rx="2"/>
+<text x="206" y="75" font-size="10">memory-intensive: +200 MB alloc, -1 MB net</text>
+
+<!-- memory-delta -->
+<rect x="0" y="82" width="280" height="14" fill="#f59e0b" rx="2"/>
+<text x="286" y="93" font-size="10">memory-delta: 312 s total lifecycle</text>
+
+<!-- cpu-burn -->
+<rect x="0" y="100" width="30" height="14" fill="#ef4444" rx="2"/>
+<text x="36" y="111" font-size="10">cpu-burn: 1500 ms, 1089 MB RSS</text>
+
+<!-- string-heavy -->
+<rect x="0" y="118" width="15" height="14" fill="#22c55e" rx="2"/>
+<text x="21" y="129" font-size="10">string-heavy 799614 chars ~46 ms</text>
+
+</g>
+
+<!-- Stats table -->
+<g transform="translate(20,290)">
+<text x="0" y="0" font-size="11" font-weight="600" fill="var(--fg)">Key Percentiles / Stats</text>
+<rect x="0" y="14" width="680" height="12" fill="var(--border)"/>
+<text x="0" y="30" font-size="9" fill="var(--fg)">Sorting: Bubble 72ms (mean), Quick 7ms (mean), Radix 3ms — 13× spread</text>
+<text x="0" y="42" font-size="9" fill="var(--fg)">Graph: BFS 1ms (min) vs Floyd-Warshall 2993ms (max) — 2993× spread</text>
+<text x="0" y="54" font-size="9" fill="var(--fg)">Memory: 200MB peak / -1MB net = 201MB total turnover in memory-intensive</text>
+<text x="0" y="66" font-size="9" fill="var(--fg)">Restoration: snap-restore 1060ms / reload 2020ms — 47% time saved</text>
+<text x="0" y="78" font-size="9" fill="var(--fg)">Cache: bfcache back 21ms / reload 2090ms — 99% latency reduction</text>
+</g>
+</svg>
